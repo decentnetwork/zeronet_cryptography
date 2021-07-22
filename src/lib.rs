@@ -111,6 +111,28 @@ pub fn sign<T: Into<Vec<u8>>>(data: T, privkey: &str) -> Result<String, Error> {
   return Ok(s);
 }
 
+//create a public key from a private key
+//```
+//use zeronet_cryptography::privkey_to_pubkey;
+//const PRIVKEY: &str = "5KYZdUEo39z3FPrtuX2QbbwGnNP5zTd7yyr2SC1j299sBCnWjss";
+//const PUBKEY: &str = "1HZwkjkeaoZfTSaJxDw6aKkxp45agDiEzN";
+//
+//let pubkey = privkey_to_pubkey(PRIVKEY);
+//
+//assert_eq!(pubkey, PUBKEY);
+//```
+pub fn privkey_to_pubkey(privkey: &str) -> Result<String, Error> {
+  let hex = match BaseX::new(BITCOIN).decode(String::from(privkey)) {
+    Some(h) => h,
+    None => return Err(Error::PrivateKeyFailure),
+  };
+  let secp = Secp256k1::new();
+  let privkey = secp256k1::SecretKey::from_slice(&hex[1..33])?;
+  let pubkey = secp256k1::PublicKey::from_secret_key(&secp, &privkey);
+  let pubkey = serialize_address(pubkey);
+  Ok(pubkey)
+}
+
 /// Create a valid key pair
 /// ```
 /// use zeronet_cryptography::create;
@@ -147,6 +169,12 @@ mod tests {
     250, 76, 36, 63, 188, 246, 57, 82, 210, 190, 131, 30, 80, 21, 194, 116, 202, 29, 102, 133, 20,
     205, 34, 11, 215, 177, 255, 148, 166, 130, 107, 161,
   ];
+
+  #[test]
+  fn test_privkey_to_pubkey() {
+    let pub_key = privkey_to_pubkey(PRIVKEY).unwrap();
+    assert_eq!(pub_key, PUBKEY);
+  }
 
   #[test]
   fn test_msg_hash() {
