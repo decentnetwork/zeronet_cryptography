@@ -114,15 +114,27 @@ pub fn sign<T: Into<Vec<u8>>>(data: T, privkey: &str) -> Result<String, Error> {
 /// Create a valid key pair
 /// ```
 /// use zeronet_cryptography::create;
-///
-/// let (priv_key, pub_key) = create();
+/// 
+/// let (priv_key, pub_key) = create(false);
 /// ```
-pub fn create() -> (String, String) {
+///
+/// Create a master key pair
+/// ```
+/// use zeronet_cryptography::create;
+///
+/// let (master_priv, master_pub) = create(true);
+/// ```
+pub fn create(master_seed: bool) -> (String, String) {
   let secp = secp256k1::Secp256k1::new();
   let mut rng = secp256k1::rand::thread_rng();
   let (priv_key, address) = secp.generate_keypair(&mut rng);
 
   let address = serialize_address(address);
+
+  if master_seed {
+      // Returns a hex-encoded private key
+      return (priv_key.to_string(), address);
+  }
 
   let slice: &[u8] = &priv_key[..];
   let mut bytes = vec![128];
@@ -173,7 +185,7 @@ mod tests {
 
   #[test]
   fn test_creating() {
-    let (priv_key, address) = super::create();
+    let (priv_key, address) = super::create(false);
     let signature = super::sign(MESSAGE, &priv_key).unwrap();
     let result = super::verify(MESSAGE, &address, &signature);
     assert_eq!(result.is_ok(), true);
