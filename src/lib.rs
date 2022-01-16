@@ -124,7 +124,7 @@ pub fn privkey_to_wif(priv_key: SecretKey) -> String {
 
 /// Create a valid key pair
 /// ```
-/// use zeronet_cryptography::{create, privkey_to_wif};
+/// use zeronet_cryptography::create;
 ///
 /// let (priv_key, pub_key) = create();
 /// ```
