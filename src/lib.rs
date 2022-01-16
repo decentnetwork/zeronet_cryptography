@@ -36,16 +36,6 @@ fn serialize_address(public_key: secp256k1::PublicKey) -> String {
   BaseX::new(BITCOIN).encode(out)
 }
 
-fn gen_keypair() -> (SecretKey, String) {
-  let secp = secp256k1::Secp256k1::new();
-  let mut rng = secp256k1::rand::thread_rng();
-  let (priv_key, address) = secp.generate_keypair(&mut rng);
-
-  let address = serialize_address(address);
-
-  (priv_key, address)
-}
-
 static MSG_SIGN_PREFIX: &'static [u8] = b"\x18Bitcoin Signed Message:\n";
 
 pub fn msg_hash(msg: &[u8]) -> Vec<u8> {
@@ -122,34 +112,30 @@ pub fn sign<T: Into<Vec<u8>>>(data: T, privkey: &str) -> Result<String, Error> {
   return Ok(s);
 }
 
-/// Create a valid key pair
-/// ```
-/// use zeronet_cryptography::create;
-///
-/// let (priv_key, pub_key) = create();
-/// ```
-pub fn create() -> (String, String) {
-  let (priv_key, address) = gen_keypair();
-
+pub fn privkey_to_wif(priv_key: SecretKey) -> String {
   let slice: &[u8] = &priv_key[..];
   let mut bytes = vec![128];
   bytes.extend_from_slice(slice);
   bytes.extend_from_slice(&[92, 91, 187, 38]);
   let priv_key = BaseX::new(BITCOIN).encode(&bytes);
 
-  (priv_key, address)
+  priv_key
 }
 
-/// Create a valid master key pair
+/// Create a valid key pair
 /// ```
-/// use zeronet_cryptography::create_master;
+/// use zeronet_cryptography::{create, privkey_to_wif};
 ///
-/// let (master_key, pub_key) = create_master();
+/// let (priv_key, pub_key) = create();
 /// ```
-pub fn create_master() -> (String, String) {
-  let (priv_key, address) = gen_keypair();
+pub fn create() -> (SecretKey, String) {
+  let secp = secp256k1::Secp256k1::new();
+  let mut rng = secp256k1::rand::thread_rng();
+  let (priv_key, address) = secp.generate_keypair(&mut rng);
 
-  (priv_key.to_string(), address)
+  let address = serialize_address(address);
+
+  (priv_key, address)
 }
 
 #[cfg(test)]
@@ -193,6 +179,8 @@ mod tests {
   #[test]
   fn test_creating() {
     let (priv_key, address) = super::create();
+    let priv_key = super::privkey_to_wif(priv_key);
+
     let signature = super::sign(MESSAGE, &priv_key).unwrap();
     let result = super::verify(MESSAGE, &address, &signature);
     assert_eq!(result.is_ok(), true);
