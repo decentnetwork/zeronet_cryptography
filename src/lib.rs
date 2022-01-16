@@ -3,6 +3,7 @@ use basex_rs::{BaseX, Decode, Encode, BITCOIN};
 use bitcoin::consensus::encode::{serialize, VarInt};
 use ripemd160::Ripemd160;
 use secp256k1::Secp256k1;
+use secp256k1::SecretKey;
 use sha2::{Digest, Sha256};
 
 pub mod error;
@@ -33,6 +34,16 @@ fn serialize_address(public_key: secp256k1::PublicKey) -> String {
   let out = &[&version, hashed.as_slice(), hashed2.get(0..4).unwrap()].concat();
 
   BaseX::new(BITCOIN).encode(out)
+}
+
+fn gen_keypair() -> (SecretKey, String) {
+  let secp = secp256k1::Secp256k1::new();
+  let mut rng = secp256k1::rand::thread_rng();
+  let (priv_key, address) = secp.generate_keypair(&mut rng);
+
+  let address = serialize_address(address);
+
+  (priv_key, address)
 }
 
 static MSG_SIGN_PREFIX: &'static [u8] = b"\x18Bitcoin Signed Message:\n";
@@ -114,27 +125,11 @@ pub fn sign<T: Into<Vec<u8>>>(data: T, privkey: &str) -> Result<String, Error> {
 /// Create a valid key pair
 /// ```
 /// use zeronet_cryptography::create;
-/// 
+///
 /// let (priv_key, pub_key) = create(false);
 /// ```
-///
-/// Create a master key pair
-/// ```
-/// use zeronet_cryptography::create;
-///
-/// let (master_priv, master_pub) = create(true);
-/// ```
-pub fn create(master_seed: bool) -> (String, String) {
-  let secp = secp256k1::Secp256k1::new();
-  let mut rng = secp256k1::rand::thread_rng();
-  let (priv_key, address) = secp.generate_keypair(&mut rng);
-
-  let address = serialize_address(address);
-
-  if master_seed {
-      // Returns a hex-encoded private key
-      return (priv_key.to_string(), address);
-  }
+pub fn create() -> (String, String) {
+  let (priv_key, address) = gen_keypair();
 
   let slice: &[u8] = &priv_key[..];
   let mut bytes = vec![128];
@@ -143,6 +138,18 @@ pub fn create(master_seed: bool) -> (String, String) {
   let priv_key = BaseX::new(BITCOIN).encode(&bytes);
 
   (priv_key, address)
+}
+
+/// Create a valid master key pair
+/// ```
+/// use zeronet_cryptography::create_master;
+///
+/// let (master_key, pub_key) = create_master;
+/// ```
+pub fn create_master() -> (String, String) {
+  let (priv_key, address) = gen_keypair();
+
+  (priv_key.to_string(), address)
 }
 
 #[cfg(test)]
