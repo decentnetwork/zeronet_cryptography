@@ -126,7 +126,7 @@ pub fn sign<T: Into<Vec<u8>>>(data: T, privkey: &str) -> Result<String, Error> {
 /// ```
 /// use zeronet_cryptography::create;
 ///
-/// let (priv_key, pub_key) = create(false);
+/// let (priv_key, pub_key) = create();
 /// ```
 pub fn create() -> (String, String) {
   let (priv_key, address) = gen_keypair();
@@ -144,7 +144,7 @@ pub fn create() -> (String, String) {
 /// ```
 /// use zeronet_cryptography::create_master;
 ///
-/// let (master_key, pub_key) = create_master;
+/// let (master_key, pub_key) = create_master();
 /// ```
 pub fn create_master() -> (String, String) {
   let (priv_key, address) = gen_keypair();
@@ -192,7 +192,7 @@ mod tests {
 
   #[test]
   fn test_creating() {
-    let (priv_key, address) = super::create(false);
+    let (priv_key, address) = super::create();
     let signature = super::sign(MESSAGE, &priv_key).unwrap();
     let result = super::verify(MESSAGE, &address, &signature);
     assert_eq!(result.is_ok(), true);
