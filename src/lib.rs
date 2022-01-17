@@ -151,7 +151,6 @@ pub fn hd_privkey(seed: &str, child_idx: u32) -> SecretKey {
   let child_num = ChildNumber::from_normal_idx(child_idx).unwrap();
   let child_privkey = xprivkey.ckd_priv(&secp, child_num).unwrap();
 
-  println!("{:?}", child_privkey.private_key.key);
   child_privkey.private_key.key
 }
 
