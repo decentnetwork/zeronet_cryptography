@@ -3,6 +3,7 @@ use basex_rs::{BaseX, Decode, Encode, BITCOIN};
 use bitcoin::consensus::encode::{serialize, VarInt};
 use ripemd160::Ripemd160;
 use secp256k1::Secp256k1;
+use secp256k1::SecretKey;
 use sha2::{Digest, Sha256};
 
 pub mod error;
@@ -133,24 +134,28 @@ pub fn privkey_to_pubkey(privkey: &str) -> Result<String, Error> {
   Ok(pubkey)
 }
 
+pub fn privkey_to_wif(priv_key: SecretKey) -> String {
+  let slice: &[u8] = &priv_key[..];
+  let mut bytes = vec![128];
+  bytes.extend_from_slice(slice);
+  bytes.extend_from_slice(&[92, 91, 187, 38]);
+  let priv_key = BaseX::new(BITCOIN).encode(&bytes);
+
+  priv_key
+}
+
 /// Create a valid key pair
 /// ```
 /// use zeronet_cryptography::create;
 ///
 /// let (priv_key, pub_key) = create();
 /// ```
-pub fn create() -> (String, String) {
+pub fn create() -> (SecretKey, String) {
   let secp = secp256k1::Secp256k1::new();
   let mut rng = secp256k1::rand::thread_rng();
   let (priv_key, address) = secp.generate_keypair(&mut rng);
 
   let address = serialize_address(address);
-
-  let slice: &[u8] = &priv_key[..];
-  let mut bytes = vec![128];
-  bytes.extend_from_slice(slice);
-  bytes.extend_from_slice(&[92, 91, 187, 38]);
-  let priv_key = BaseX::new(BITCOIN).encode(&bytes);
 
   (priv_key, address)
 }
@@ -202,6 +207,8 @@ mod tests {
   #[test]
   fn test_creating() {
     let (priv_key, address) = super::create();
+    let priv_key = super::privkey_to_wif(priv_key);
+
     let signature = super::sign(MESSAGE, &priv_key).unwrap();
     let result = super::verify(MESSAGE, &address, &signature);
     assert_eq!(result.is_ok(), true);
