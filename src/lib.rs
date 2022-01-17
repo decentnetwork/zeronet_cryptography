@@ -1,10 +1,15 @@
 use base64::{decode, encode};
 use basex_rs::{BaseX, Decode, Encode, BITCOIN};
 use bitcoin::consensus::encode::{serialize, VarInt};
+use bitcoin::util::base58::check_encode_slice;
+use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey};
+use hex::{decode as hex_decode, encode as hex_encode};
 use ripemd160::Ripemd160;
 use secp256k1::Secp256k1;
 use secp256k1::SecretKey;
 use sha2::{Digest, Sha256};
+
+use bitcoin::network::constants::Network;
 
 pub mod error;
 pub use error::CryptError as Error;
@@ -138,9 +143,8 @@ pub fn privkey_to_wif(priv_key: SecretKey) -> String {
   let slice: &[u8] = &priv_key[..];
   let mut bytes = vec![128];
   bytes.extend_from_slice(slice);
-  bytes.extend_from_slice(&[92, 91, 187, 38]);
-  let priv_key = BaseX::new(BITCOIN).encode(&bytes);
 
+  let priv_key = check_encode_slice(&bytes);
   priv_key
 }
 
@@ -160,6 +164,18 @@ pub fn create() -> (SecretKey, String) {
   (priv_key, address)
 }
 
+pub fn hd_privkey(seed: &str, child_idx: u32) -> SecretKey {
+  let seed_bytes = hex_decode(&seed).unwrap();
+
+  let xprivkey = ExtendedPrivKey::new_master(Network::Bitcoin, &seed_bytes).unwrap();
+
+  let secp = Secp256k1::new();
+  let child_num = ChildNumber::from_normal_idx(child_idx).unwrap();
+  let child_privkey = xprivkey.ckd_priv(&secp, child_num).unwrap();
+
+  child_privkey.private_key.key
+}
+
 #[cfg(test)]
 #[cfg_attr(tarpaulin, ignore)]
 mod tests {
@@ -167,6 +183,9 @@ mod tests {
 
   const PUBKEY: &str = "1HZwkjkeaoZfTSaJxDw6aKkxp45agDiEzN";
   const PRIVKEY: &str = "5KYZdUEo39z3FPrtuX2QbbwGnNP5zTd7yyr2SC1j299sBCnWjss";
+  const SEED: &str = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+  const CHILD_PRIVKEY: &str = "5J3HUZpcNuEMmFMec9haxPJ58GiEHruqYDLtMGtFAumaLMr5dCV";
+  const CHILD_INDEX: u32 = 45168996;
   const MESSAGE: &str = "Testmessage";
   const SIGNATURE: &str =
     "G+Hnv6dXxOAmtCj8MwQrOh5m5bV9QrmQi7DSGKiRGm9TWqWP3c5uYxUI/C/c+m9+LtYO26GbVnvuwu7hVPpUdow=";
@@ -212,5 +231,12 @@ mod tests {
     let signature = super::sign(MESSAGE, &priv_key).unwrap();
     let result = super::verify(MESSAGE, &address, &signature);
     assert_eq!(result.is_ok(), true);
+  }
+
+  #[test]
+  fn test_derive_child_privkey() {
+    let child_privkey = super::hd_privkey(SEED, CHILD_INDEX);
+
+    assert_eq!(privkey_to_wif(child_privkey), CHILD_PRIVKEY);
   }
 }
