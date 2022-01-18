@@ -18,6 +18,8 @@ pub enum CryptError {
   AddressMismatch(String),
   #[error("Private key failure")]
   PrivateKeyFailure,
+  #[error("Invalid WIF private key")]
+  InvalidWIFPrivKey,
 }
 
 impl From<DecodeError> for CryptError {
