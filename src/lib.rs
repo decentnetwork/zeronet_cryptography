@@ -257,4 +257,12 @@ mod tests {
     let priv_key = super::wif_to_privkey(PRIVKEY).unwrap();
     assert_eq!(PRIVKEY_BYTES, priv_key);
   }
+
+  #[test]
+  fn test_privkey_to_wif() {
+    let priv_key = super::SecretKey::from_slice(PRIVKEY_BYTES).unwrap();
+
+    let wif_privkey = super::privkey_to_wif(priv_key);
+    assert_eq!(PRIVKEY, wif_privkey);
+  }
 }
