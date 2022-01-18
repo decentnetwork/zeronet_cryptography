@@ -7,11 +7,11 @@ use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey};
 use hex::{decode as hex_decode, encode as hex_encode};
 use ripemd160::Ripemd160;
 use secp256k1::Secp256k1;
-use secp256k1::SecretKey;
 use sha2::{Digest, Sha256};
 
 pub mod error;
 pub use error::CryptError as Error;
+pub use secp256k1::SecretKey;
 
 fn sha256d(input: &[u8]) -> Vec<u8> {
   let mut hasher1 = Sha256::default();
@@ -194,8 +194,8 @@ mod tests {
   const SEED: &str = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
   const CHILD_PRIVKEY: &str = "5J3HUZpcNuEMmFMec9haxPJ58GiEHruqYDLtMGtFAumaLMr5dCV";
   const PRIVKEY_BYTES: &[u8] = &[
-    128, 227, 176, 196, 66, 152, 252, 28, 20, 154, 251, 244, 200, 153, 111, 185, 36, 39, 174, 65,
-    228, 100, 155, 147, 76, 164, 149, 153, 27, 120, 82, 184, 85,
+    227, 176, 196, 66, 152, 252, 28, 20, 154, 251, 244, 200, 153, 111, 185, 36, 39, 174, 65, 228,
+    100, 155, 147, 76, 164, 149, 153, 27, 120, 82, 184, 85,
   ];
   const CHILD_INDEX: u32 = 45168996;
   const MESSAGE: &str = "Testmessage";
