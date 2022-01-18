@@ -147,7 +147,7 @@ pub fn privkey_to_wif(priv_key: SecretKey) -> String {
   priv_key
 }
 
-pub fn privkey_from_wif(wif_privkey: &str) -> Result<Vec<u8>, Error> {
+pub fn wif_to_privkey(wif_privkey: &str) -> Result<Vec<u8>, Error> {
   let priv_key = from_check(wif_privkey);
 
   match priv_key {
@@ -253,8 +253,8 @@ mod tests {
   }
 
   #[test]
-  fn test_privkey_from_wif() {
-    let priv_key = super::privkey_from_wif(PRIVKEY).unwrap();
+  fn test_wif_to_privkey() {
+    let priv_key = super::wif_to_privkey(PRIVKEY).unwrap();
     assert_eq!(PRIVKEY_BYTES, priv_key);
   }
 }
