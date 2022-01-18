@@ -151,7 +151,10 @@ pub fn wif_to_privkey(wif_privkey: &str) -> Result<Vec<u8>, Error> {
   let priv_key = from_check(wif_privkey);
 
   match priv_key {
-    Ok(key) => Ok(key[1..].to_vec()),
+    Ok(key) => match key[0] {
+      128 /* 0x80 */ => Ok(key[1..].to_vec()),
+      _ => Err(Error::InvalidNetwork),
+    },
     Err(_) => Err(Error::InvalidWIFPrivKey),
   }
 }
