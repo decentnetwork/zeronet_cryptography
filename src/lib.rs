@@ -1,18 +1,17 @@
 use base64::{decode, encode};
 use basex_rs::{BaseX, Decode, Encode, BITCOIN};
 use bitcoin::consensus::encode::{serialize, VarInt};
-use bitcoin::util::base58::check_encode_slice;
-use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey};
-use hex::{decode as hex_decode, encode as hex_encode};
+use bitcoin::network::constants::Network;
+use bitcoin::util::base58::{check_encode_slice, from_check};
+use bitcoin::util::bip32::{ChildNumber, ExtendedPrivKey};
+use hex::decode as hex_decode;
 use ripemd160::Ripemd160;
 use secp256k1::Secp256k1;
-use secp256k1::SecretKey;
 use sha2::{Digest, Sha256};
-
-use bitcoin::network::constants::Network;
 
 pub mod error;
 pub use error::CryptError as Error;
+pub use secp256k1::SecretKey;
 
 fn sha256d(input: &[u8]) -> Vec<u8> {
   let mut hasher1 = Sha256::default();
@@ -148,6 +147,18 @@ pub fn privkey_to_wif(priv_key: SecretKey) -> String {
   priv_key
 }
 
+pub fn wif_to_privkey(wif_privkey: &str) -> Result<Vec<u8>, Error> {
+  let priv_key = from_check(wif_privkey);
+
+  match priv_key {
+    Ok(key) => match key[0] {
+      128 /* 0x80 */ => Ok(key[1..].to_vec()),
+      _ => Err(Error::InvalidNetworkKey),
+    },
+    Err(_) => Err(Error::InvalidWIFPrivKey),
+  }
+}
+
 /// Create a valid key pair
 /// ```
 /// use zeronet_cryptography::create;
@@ -185,6 +196,10 @@ mod tests {
   const PRIVKEY: &str = "5KYZdUEo39z3FPrtuX2QbbwGnNP5zTd7yyr2SC1j299sBCnWjss";
   const SEED: &str = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
   const CHILD_PRIVKEY: &str = "5J3HUZpcNuEMmFMec9haxPJ58GiEHruqYDLtMGtFAumaLMr5dCV";
+  const PRIVKEY_BYTES: &[u8] = &[
+    227, 176, 196, 66, 152, 252, 28, 20, 154, 251, 244, 200, 153, 111, 185, 36, 39, 174, 65, 228,
+    100, 155, 147, 76, 164, 149, 153, 27, 120, 82, 184, 85,
+  ];
   const CHILD_INDEX: u32 = 45168996;
   const MESSAGE: &str = "Testmessage";
   const SIGNATURE: &str =
@@ -217,26 +232,40 @@ mod tests {
 
   #[test]
   fn test_signing() {
-    let result = super::sign(MESSAGE, PRIVKEY);
+    let result = sign(MESSAGE, PRIVKEY);
     assert_eq!(result.is_ok(), true);
-    let result2 = super::verify(MESSAGE, PUBKEY, &result.unwrap());
+    let result2 = verify(MESSAGE, PUBKEY, &result.unwrap());
     assert_eq!(result2.is_ok(), true);
   }
 
   #[test]
   fn test_creating() {
-    let (priv_key, address) = super::create();
-    let priv_key = super::privkey_to_wif(priv_key);
+    let (priv_key, address) = create();
+    let priv_key = privkey_to_wif(priv_key);
 
-    let signature = super::sign(MESSAGE, &priv_key).unwrap();
-    let result = super::verify(MESSAGE, &address, &signature);
+    let signature = sign(MESSAGE, &priv_key).unwrap();
+    let result = verify(MESSAGE, &address, &signature);
     assert_eq!(result.is_ok(), true);
   }
 
   #[test]
   fn test_derive_child_privkey() {
-    let child_privkey = super::hd_privkey(SEED, CHILD_INDEX);
+    let child_privkey = hd_privkey(SEED, CHILD_INDEX);
 
     assert_eq!(privkey_to_wif(child_privkey), CHILD_PRIVKEY);
+  }
+
+  #[test]
+  fn test_wif_to_privkey() {
+    let priv_key = wif_to_privkey(PRIVKEY).unwrap();
+    assert_eq!(PRIVKEY_BYTES, priv_key);
+  }
+
+  #[test]
+  fn test_privkey_to_wif() {
+    let priv_key = SecretKey::from_slice(PRIVKEY_BYTES).unwrap();
+
+    let wif_privkey = privkey_to_wif(priv_key);
+    assert_eq!(PRIVKEY, wif_privkey);
   }
 }
