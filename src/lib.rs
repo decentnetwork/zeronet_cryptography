@@ -151,7 +151,7 @@ pub fn privkey_from_wif(wif_privkey: &str) -> Result<Vec<u8>, Error> {
   let priv_key = from_check(wif_privkey);
 
   match priv_key {
-    Ok(key) => Ok(key),
+    Ok(key) => Ok(key[1..].to_vec()),
     Err(_) => Err(Error::InvalidWIFPrivKey),
   }
 }
