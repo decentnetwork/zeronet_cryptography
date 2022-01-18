@@ -21,7 +21,7 @@ pub enum CryptError {
   #[error("Invalid WIF private key")]
   InvalidWIFPrivKey,
   #[error("Invalid network (expected mainnet)")]
-  InvalidNetwork
+  InvalidNetworkKey
 }
 
 impl From<DecodeError> for CryptError {
