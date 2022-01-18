@@ -232,40 +232,40 @@ mod tests {
 
   #[test]
   fn test_signing() {
-    let result = super::sign(MESSAGE, PRIVKEY);
+    let result = sign(MESSAGE, PRIVKEY);
     assert_eq!(result.is_ok(), true);
-    let result2 = super::verify(MESSAGE, PUBKEY, &result.unwrap());
+    let result2 = verify(MESSAGE, PUBKEY, &result.unwrap());
     assert_eq!(result2.is_ok(), true);
   }
 
   #[test]
   fn test_creating() {
-    let (priv_key, address) = super::create();
-    let priv_key = super::privkey_to_wif(priv_key);
+    let (priv_key, address) = create();
+    let priv_key = privkey_to_wif(priv_key);
 
-    let signature = super::sign(MESSAGE, &priv_key).unwrap();
-    let result = super::verify(MESSAGE, &address, &signature);
+    let signature = sign(MESSAGE, &priv_key).unwrap();
+    let result = verify(MESSAGE, &address, &signature);
     assert_eq!(result.is_ok(), true);
   }
 
   #[test]
   fn test_derive_child_privkey() {
-    let child_privkey = super::hd_privkey(SEED, CHILD_INDEX);
+    let child_privkey = hd_privkey(SEED, CHILD_INDEX);
 
     assert_eq!(privkey_to_wif(child_privkey), CHILD_PRIVKEY);
   }
 
   #[test]
   fn test_wif_to_privkey() {
-    let priv_key = super::wif_to_privkey(PRIVKEY).unwrap();
+    let priv_key = wif_to_privkey(PRIVKEY).unwrap();
     assert_eq!(PRIVKEY_BYTES, priv_key);
   }
 
   #[test]
   fn test_privkey_to_wif() {
-    let priv_key = super::SecretKey::from_slice(PRIVKEY_BYTES).unwrap();
+    let priv_key = SecretKey::from_slice(PRIVKEY_BYTES).unwrap();
 
-    let wif_privkey = super::privkey_to_wif(priv_key);
+    let wif_privkey = privkey_to_wif(priv_key);
     assert_eq!(PRIVKEY, wif_privkey);
   }
 }
