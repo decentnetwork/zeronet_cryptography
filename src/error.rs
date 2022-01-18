@@ -20,7 +20,7 @@ pub enum CryptError {
   PrivateKeyFailure,
   #[error("Invalid WIF private key")]
   InvalidWIFPrivKey,
-  #[error("Invalid network (expected mainnet)")]
+  #[error("Invalid network key (expected mainnet)")]
   InvalidNetworkKey
 }
 
