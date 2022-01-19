@@ -18,6 +18,5 @@ ripemd160 = "~0.9.0"
 secp256k1 = { version = "~0.19.0", features = ["recovery", "rand", "std", "rand-std"] }
 base64 = "~0.12.0"
 sha2 = "~0.9.0"
-basex-rs = "~0.1.0"
 thiserror = "~1.0"
 hex = "0.4.3"
