@@ -1,5 +1,4 @@
 use base64::{decode, encode};
-use basex_rs::{BaseX, Decode, Encode, BITCOIN};
 use bitcoin::consensus::encode::{serialize, VarInt};
 use bitcoin::network::constants::Network;
 use bitcoin::util::base58::{check_encode_slice, from_check};
@@ -14,30 +13,27 @@ pub use error::CryptError as Error;
 pub use secp256k1::SecretKey;
 
 fn sha256d(input: &[u8]) -> Vec<u8> {
-  let mut hasher1 = Sha256::default();
-  hasher1.update(input);
-  let mut hasher2 = Sha256::default();
-  hasher2.update(hasher1.finalize());
-  return hasher2.finalize().into_iter().collect();
+  let mut hasher = Sha256::default();
+  hasher.update(input);
+  return hasher.finalize().into_iter().collect();
 }
 
 fn hash160(input: &[u8]) -> Vec<u8> {
-  let mut hasher1 = Sha256::default();
-  hasher1.update(input);
-  let mut hasher2 = Ripemd160::default();
-  hasher2.update(hasher1.finalize());
-  return hasher2.finalize().into_iter().collect();
+  let mut hasher = Ripemd160::default();
+  hasher.update(input);
+  return hasher.finalize().into_iter().collect();
 }
 
 fn serialize_address(public_key: secp256k1::PublicKey) -> String {
   let serialized = public_key.serialize_uncompressed();
 
-  let hashed = hash160(&serialized);
   let version = [0u8];
-  let hashed2 = sha256d(&[&version, hashed.as_slice()].concat());
-  let out = &[&version, hashed.as_slice(), hashed2.get(0..4).unwrap()].concat();
+  let sha256_hash = sha256d(&serialized);
+  let ripemd160_hash = hash160(sha256_hash.as_slice());
 
-  BaseX::new(BITCOIN).encode(out)
+  let out = &[&version, ripemd160_hash.as_slice()].concat();
+
+  check_encode_slice(out)
 }
 
 static MSG_SIGN_PREFIX: &'static [u8] = b"\x18Bitcoin Signed Message:\n";
@@ -45,7 +41,7 @@ static MSG_SIGN_PREFIX: &'static [u8] = b"\x18Bitcoin Signed Message:\n";
 pub fn msg_hash(msg: &[u8]) -> Vec<u8> {
   let bytes;
   bytes = serialize(&VarInt(msg.len() as u64));
-  sha256d(&[MSG_SIGN_PREFIX, bytes.as_slice(), msg].concat())
+  sha256d(sha256d(&[MSG_SIGN_PREFIX, bytes.as_slice(), msg].concat()).as_slice())
 }
 
 /// Verifies that sign is a valid sign for given data and address
@@ -100,11 +96,9 @@ pub fn verify<T: Into<Vec<u8>>>(data: T, valid_address: &str, sign: &str) -> Res
 /// }
 /// ```
 pub fn sign<T: Into<Vec<u8>>>(data: T, privkey: &str) -> Result<String, Error> {
-  let hex = match BaseX::new(BITCOIN).decode(String::from(privkey)) {
-    Some(h) => h,
-    None => return Err(Error::PrivateKeyFailure),
-  };
-  let privkey = secp256k1::SecretKey::from_slice(&hex[1..33])?;
+  let privkey_bytes = wif_to_privkey(privkey)?;
+
+  let privkey = secp256k1::SecretKey::from_slice(&privkey_bytes)?;
   let hash = msg_hash(&data.into());
   let message = secp256k1::Message::from_slice(hash.as_slice())?;
   let secp = Secp256k1::new();
@@ -127,12 +121,10 @@ pub fn sign<T: Into<Vec<u8>>>(data: T, privkey: &str) -> Result<String, Error> {
 //assert_eq!(pubkey, PUBKEY);
 //```
 pub fn privkey_to_pubkey(privkey: &str) -> Result<String, Error> {
-  let hex = match BaseX::new(BITCOIN).decode(String::from(privkey)) {
-    Some(h) => h,
-    None => return Err(Error::PrivateKeyFailure),
-  };
+  let privkey_bytes = wif_to_privkey(&privkey)?;
+
   let secp = Secp256k1::new();
-  let privkey = secp256k1::SecretKey::from_slice(&hex[1..33])?;
+  let privkey = secp256k1::SecretKey::from_slice(&privkey_bytes)?;
   let pubkey = secp256k1::PublicKey::from_secret_key(&secp, &privkey);
   let pubkey = serialize_address(pubkey);
   Ok(pubkey)
