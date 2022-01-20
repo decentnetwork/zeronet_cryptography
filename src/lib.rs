@@ -138,6 +138,15 @@ pub fn privkey_to_pubkey(privkey: &str) -> Result<String, Error> {
   Ok(pubkey)
 }
 
+pub fn seed_to_privkey(seed: &str) -> Result<SecretKey, Error> {
+  // TODO: needs error handling
+  let privkey_bytes = hex_decode(seed).unwrap();
+
+  // TODO: needs some checking like: privkey length and etc
+  let privkey = SecretKey::from_slice(&privkey_bytes)?;
+  Ok(privkey)
+}
+
 pub fn privkey_to_wif(priv_key: SecretKey) -> String {
   let slice: &[u8] = &priv_key[..];
   let mut bytes = vec![128];
@@ -267,5 +276,13 @@ mod tests {
 
     let wif_privkey = privkey_to_wif(priv_key);
     assert_eq!(PRIVKEY, wif_privkey);
+  }
+
+  #[test]
+  fn test_seed_to_privkey() {
+    let expected_privkey = SecretKey::from_slice(PRIVKEY_BYTES).unwrap();
+    let privkey = seed_to_privkey(SEED).unwrap();
+
+    assert_eq!(privkey, expected_privkey);
   }
 }
