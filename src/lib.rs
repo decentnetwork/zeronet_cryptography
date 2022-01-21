@@ -1,44 +1,39 @@
 use base64::{decode, encode};
-use basex_rs::{BaseX, Decode, Encode, BITCOIN};
 use bitcoin::consensus::encode::{serialize, VarInt};
-use bitcoin::util::base58::check_encode_slice;
+use bitcoin::network::constants::Network;
+use bitcoin::util::base58::{check_encode_slice, from_check};
 use bitcoin::util::bip32::{ChildNumber, ExtendedPrivKey};
 use hex::decode as hex_decode;
 use ripemd160::Ripemd160;
 use secp256k1::Secp256k1;
-use secp256k1::SecretKey;
 use sha2::{Digest, Sha256};
-
-use bitcoin::network::constants::Network;
 
 pub mod error;
 pub use error::CryptError as Error;
+pub use secp256k1::SecretKey;
 
 fn sha256d(input: &[u8]) -> Vec<u8> {
-    let mut hasher1 = Sha256::default();
-    hasher1.update(input);
-    let mut hasher2 = Sha256::default();
-    hasher2.update(hasher1.finalize());
-    hasher2.finalize().into_iter().collect()
+    let mut hasher = Sha256::default();
+    hasher.update(input);
+    hasher.finalize().into_iter().collect()
 }
 
 fn hash160(input: &[u8]) -> Vec<u8> {
-    let mut hasher1 = Sha256::default();
-    hasher1.update(input);
-    let mut hasher2 = Ripemd160::default();
-    hasher2.update(hasher1.finalize());
-    hasher2.finalize().into_iter().collect()
+    let mut hasher = Ripemd160::default();
+    hasher.update(input);
+    hasher.finalize().into_iter().collect()
 }
 
 fn serialize_address(public_key: secp256k1::PublicKey) -> String {
     let serialized = public_key.serialize_uncompressed();
 
-    let hashed = hash160(&serialized);
     let version = [0u8];
-    let hashed2 = sha256d(&[&version, hashed.as_slice()].concat());
-    let out = &[&version, hashed.as_slice(), hashed2.get(0..4).unwrap()].concat();
+    let sha256_hash = sha256d(&serialized);
+    let ripemd160_hash = hash160(sha256_hash.as_slice());
 
-    BaseX::new(BITCOIN).encode(out)
+    let out = &[&version, ripemd160_hash.as_slice()].concat();
+
+    check_encode_slice(out)
 }
 
 static MSG_SIGN_PREFIX: &[u8] = b"\x18Bitcoin Signed Message:\n";
@@ -46,7 +41,7 @@ static MSG_SIGN_PREFIX: &[u8] = b"\x18Bitcoin Signed Message:\n";
 pub fn msg_hash(msg: &[u8]) -> Vec<u8> {
     let bytes;
     bytes = serialize(&VarInt(msg.len() as u64));
-    sha256d(&[MSG_SIGN_PREFIX, bytes.as_slice(), msg].concat())
+    sha256d(sha256d(&[MSG_SIGN_PREFIX, bytes.as_slice(), msg].concat()).as_slice())
 }
 
 /// Verifies that sign is a valid sign for given data and address
@@ -101,11 +96,9 @@ pub fn verify<T: Into<Vec<u8>>>(data: T, valid_address: &str, sign: &str) -> Res
 /// }
 /// ```
 pub fn sign<T: Into<Vec<u8>>>(data: T, privkey: &str) -> Result<String, Error> {
-    let hex = match BaseX::new(BITCOIN).decode(String::from(privkey)) {
-        Some(h) => h,
-        None => return Err(Error::PrivateKeyFailure),
-    };
-    let privkey = secp256k1::SecretKey::from_slice(&hex[1..33])?;
+    let privkey_bytes = wif_to_privkey(privkey)?;
+
+    let privkey = secp256k1::SecretKey::from_slice(&privkey_bytes)?;
     let hash = msg_hash(&data.into());
     let message = secp256k1::Message::from_slice(hash.as_slice())?;
     let secp = Secp256k1::new();
@@ -128,15 +121,22 @@ pub fn sign<T: Into<Vec<u8>>>(data: T, privkey: &str) -> Result<String, Error> {
 //assert_eq!(pubkey, PUBKEY);
 //```
 pub fn privkey_to_pubkey(privkey: &str) -> Result<String, Error> {
-    let hex = match BaseX::new(BITCOIN).decode(String::from(privkey)) {
-        Some(h) => h,
-        None => return Err(Error::PrivateKeyFailure),
-    };
+    let privkey_bytes = wif_to_privkey(privkey)?;
+
     let secp = Secp256k1::new();
-    let privkey = secp256k1::SecretKey::from_slice(&hex[1..33])?;
+    let privkey = secp256k1::SecretKey::from_slice(&privkey_bytes)?;
     let pubkey = secp256k1::PublicKey::from_secret_key(&secp, &privkey);
     let pubkey = serialize_address(pubkey);
     Ok(pubkey)
+}
+
+pub fn seed_to_privkey(seed: &str) -> Result<SecretKey, Error> {
+    // TODO: needs error handling
+    let privkey_bytes = hex_decode(seed).unwrap();
+
+    // TODO: needs some checking like: privkey length and etc
+    let privkey = SecretKey::from_slice(&privkey_bytes)?;
+    Ok(privkey)
 }
 
 pub fn privkey_to_wif(priv_key: SecretKey) -> String {
@@ -147,6 +147,18 @@ pub fn privkey_to_wif(priv_key: SecretKey) -> String {
     #[allow(clippy::let_and_return)]
     let priv_key = check_encode_slice(&bytes);
     priv_key
+}
+
+pub fn wif_to_privkey(wif_privkey: &str) -> Result<Vec<u8>, Error> {
+    let priv_key = from_check(wif_privkey);
+
+    match priv_key {
+        Ok(key) => match key[0] {
+      128 /* 0x80 */ => Ok(key[1..].to_vec()),
+      _ => Err(Error::InvalidNetworkKey),
+    },
+        Err(_) => Err(Error::InvalidWIFPrivKey),
+    }
 }
 
 /// Create a valid key pair
@@ -186,6 +198,10 @@ mod tests {
     const PRIVKEY: &str = "5KYZdUEo39z3FPrtuX2QbbwGnNP5zTd7yyr2SC1j299sBCnWjss";
     const SEED: &str = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
     const CHILD_PRIVKEY: &str = "5J3HUZpcNuEMmFMec9haxPJ58GiEHruqYDLtMGtFAumaLMr5dCV";
+    const PRIVKEY_BYTES: &[u8] = &[
+        227, 176, 196, 66, 152, 252, 28, 20, 154, 251, 244, 200, 153, 111, 185, 36, 39, 174, 65,
+        228, 100, 155, 147, 76, 164, 149, 153, 27, 120, 82, 184, 85,
+    ];
     const CHILD_INDEX: u32 = 45168996;
     const MESSAGE: &str = "Testmessage";
     const SIGNATURE: &str =
@@ -218,26 +234,48 @@ mod tests {
 
     #[test]
     fn test_signing() {
-        let result = super::sign(MESSAGE, PRIVKEY);
+        let result = sign(MESSAGE, PRIVKEY);
         assert_eq!(result.is_ok(), true);
-        let result2 = super::verify(MESSAGE, PUBKEY, &result.unwrap());
+        let result2 = verify(MESSAGE, PUBKEY, &result.unwrap());
         assert_eq!(result2.is_ok(), true);
     }
 
     #[test]
     fn test_creating() {
-        let (priv_key, address) = super::create();
-        let priv_key = super::privkey_to_wif(priv_key);
+        let (priv_key, address) = create();
+        let priv_key = privkey_to_wif(priv_key);
 
-        let signature = super::sign(MESSAGE, &priv_key).unwrap();
-        let result = super::verify(MESSAGE, &address, &signature);
+        let signature = sign(MESSAGE, &priv_key).unwrap();
+        let result = verify(MESSAGE, &address, &signature);
         assert_eq!(result.is_ok(), true);
     }
 
     #[test]
     fn test_derive_child_privkey() {
-        let child_privkey = super::hd_privkey(SEED, CHILD_INDEX);
+        let child_privkey = hd_privkey(SEED, CHILD_INDEX);
 
         assert_eq!(privkey_to_wif(child_privkey), CHILD_PRIVKEY);
+    }
+
+    #[test]
+    fn test_wif_to_privkey() {
+        let priv_key = wif_to_privkey(PRIVKEY).unwrap();
+        assert_eq!(PRIVKEY_BYTES, priv_key);
+    }
+
+    #[test]
+    fn test_privkey_to_wif() {
+        let priv_key = SecretKey::from_slice(PRIVKEY_BYTES).unwrap();
+
+        let wif_privkey = privkey_to_wif(priv_key);
+        assert_eq!(PRIVKEY, wif_privkey);
+    }
+
+    #[test]
+    fn test_seed_to_privkey() {
+        let expected_privkey = SecretKey::from_slice(PRIVKEY_BYTES).unwrap();
+        let privkey = seed_to_privkey(SEED).unwrap();
+
+        assert_eq!(privkey, expected_privkey);
     }
 }
