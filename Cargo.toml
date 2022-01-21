@@ -1,13 +1,13 @@
 [package]
 name = "zeronet_cryptography"
-version = "0.1.8"
-authors = ["Ansho Rei <anshorei@protonmail.com>"]
-edition = "2018"
-description = "ZeroNet cryptocraphy helper library"
-documentation = "http://www.github.com/Anshorei/zeronet_cryptography"
+version = "0.2.0"
+authors = ["ZeroNetX <zeronet.dev>"]
+edition = "2021"
+description = "ZeroNetX cryptography helper library"
+documentation = "http://www.github.com/ZeroNetX/zeronet_cryptography"
 readme = "README.md"
-homepage = "http://www.github.com/Anshorei/zeronet_cryptography"
-repository = "http://www.github.com/Anshorei/zeronet_cryptography"
+homepage = "http://www.github.com/ZeroNetX/zeronet_cryptography"
+repository = "http://www.github.com/ZeroNetX/zeronet_cryptography"
 license = "WTFPL"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
