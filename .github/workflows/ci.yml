@@ -1,0 +1,162 @@
+name: Continuous integration
+
+on:
+  pull_request:
+  push:
+    branches:
+      - zeronetx
+      - custom
+
+jobs:
+  audit:
+    name: Security audit
+    on:
+      push:
+        paths: 
+          - '**/Cargo.toml'
+          - '**/Cargo.lock'
+    jobs:
+      security_audit:
+        runs-on: ubuntu-18.04
+        steps:
+          - uses: actions/checkout@v1
+          - uses: actions-rs/audit-check@v1.2.0
+            with:
+              token: ${{ secrets.GITHUB_TOKEN }}
+
+  test-desktop:
+    name: Build and test
+    runs-on: ubuntu-18.04
+    strategy:
+      matrix:
+        args: [
+          # "--no-default-features",
+          "--all-features",
+          # "--benches --all-features",
+        ]
+    steps:
+
+    - name: Cancel Previous Runs
+      uses: styfle/cancel-workflow-action@0.9.1
+      with:
+        access_token: ${{ github.token }}
+
+    - uses: actions/checkout@v2.4.0
+
+    - uses: Swatinem/rust-cache@v1.3.0
+      with:
+        key: ${{ matrix.args }}
+
+    - run: cargo test --workspace ${{ matrix.args }}
+
+  test-wasm:
+    name: Build on WASM
+    runs-on: ubuntu-18.04
+    strategy:
+      matrix:
+        toolchain: [
+          wasm32-unknown-emscripten,
+          wasm32-wasi
+        ]
+        include:
+          - toolchain: wasm32-unknown-unknown
+            args: "--features wasm-bindgen"
+    container:
+      image: rust
+      env:
+        CC: clang-11
+    steps:
+
+    - name: Cancel Previous Runs
+      uses: styfle/cancel-workflow-action@0.9.1
+      with:
+        access_token: ${{ github.token }}
+
+    - uses: actions/checkout@v2.4.0
+
+    - name: Install Rust ${{ matrix.toolchain }}
+      uses: actions-rs/toolchain@v1.0.7
+      with:
+        toolchain: stable
+        target: ${{ matrix.toolchain }}
+        override: true
+
+    - name: Install a recent version of clang
+      run: |
+        apt-get update
+        apt-get install -y clang-11
+
+    - name: Install CMake
+      run: apt-get install -y cmake
+
+    - uses: Swatinem/rust-cache@v1.3.0
+      with:
+        key: ${{ matrix.toolchain }}
+
+    - name: Build on ${{ matrix.toolchain }}
+      run: cargo build --workspace --target=${{ matrix.toolchain }} ${{ matrix.args }}
+
+  check-rustdoc-links:
+    name: Check rustdoc intra-doc links
+    runs-on: ubuntu-18.04
+    container:
+      image: rust
+    steps:
+
+    - name: Cancel Previous Runs
+      uses: styfle/cancel-workflow-action@0.9.1
+      with:
+        access_token: ${{ github.token }}
+
+    - uses: actions/checkout@v2.4.0
+
+    - uses: Swatinem/rust-cache@v1.3.0
+
+    - name: Check rustdoc links
+      run: RUSTDOCFLAGS="--deny broken_intra_doc_links" cargo doc --verbose --workspace --no-deps --document-private-items
+
+  check-clippy:
+    runs-on: ubuntu-18.04
+    steps:
+
+    - name: Cancel Previous Runs
+      uses: styfle/cancel-workflow-action@0.9.1
+      with:
+        access_token: ${{ github.token }}
+
+    - uses: actions/checkout@v2.4.0
+
+    - uses: actions-rs/toolchain@v1.0.7
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+        components: clippy
+
+    - uses: Swatinem/rust-cache@v1.3.0
+
+    - name: Run cargo clippy
+      uses: actions-rs/cargo@v1.0.3
+      with:
+        command: custom-clippy # cargo alias to allow reuse of config locally
+
+  rustfmt:
+    runs-on: ubuntu-18.04
+    steps:
+
+    - name: Cancel Previous Runs
+      uses: styfle/cancel-workflow-action@0.9.0
+      with:
+        access_token: ${{ github.token }}
+
+    - uses: actions/checkout@v2.4.0
+
+    - uses: actions-rs/toolchain@v1.0.7
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+        components: rustfmt
+
+    - name: Check formatting
+      run: cargo fmt -- --check
