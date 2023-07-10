@@ -38,6 +38,18 @@ fn serialize_address(public_key: secp256k1::PublicKey) -> String {
 
 static MSG_SIGN_PREFIX: &[u8] = b"\x18Bitcoin Signed Message:\n";
 
+/// Calculates the hash of a Bitcoin signed message
+/// ```
+/// use zeronet_cryptography::msg_hash;
+///
+/// const MESSAGE: &str = "Testmessage";
+/// const MSG_HASH: &[u8] = &[
+///     250, 76, 36, 63, 188, 246, 57, 82, 210, 190, 131, 30, 80, 21, 194, 116, 202, 29, 102, 133,
+///     20, 205, 34, 11, 215, 177, 255, 148, 166, 130, 107, 161,
+/// ]; // fa4c243fbcf63952d2be831e5015c274ca1d668514cd220bd7b1ff94a6826ba1
+///
+/// let result = msg_hash(MESSAGE.as_bytes());
+/// assert_eq!(result, MSG_HASH);
 pub fn msg_hash(msg: &[u8]) -> Vec<u8> {
     let bytes;
     bytes = serialize(&VarInt(msg.len() as u64));
