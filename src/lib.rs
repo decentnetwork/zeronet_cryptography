@@ -152,6 +152,20 @@ pub fn seed_to_privkey(seed: &str) -> Result<SecretKey, Error> {
     Ok(privkey)
 }
 
+/// Converts a private key into a Wallet Import Format (WIF) string
+/// ```
+/// use zeronet_cryptography::{SecretKey, privkey_to_wif};
+///
+/// const PRIVKEY: &str = "5KYZdUEo39z3FPrtuX2QbbwGnNP5zTd7yyr2SC1j299sBCnWjss";
+/// const PRIVKEY_BYTES: &[u8] = &[
+/// 227, 176, 196, 66, 152, 252, 28, 20, 154, 251, 244, 200, 153, 111, 185, 36, 39, 174, 65,
+/// 228, 100, 155, 147, 76, 164, 149, 153, 27, 120, 82, 184, 85,
+/// ];
+///
+/// let priv_key = SecretKey::from_slice(PRIVKEY_BYTES).unwrap();
+/// let wif_privkey = privkey_to_wif(priv_key);
+/// assert_eq!(PRIVKEY, wif_privkey);
+/// ```
 pub fn privkey_to_wif(priv_key: SecretKey) -> String {
     let slice: &[u8] = &priv_key[..];
     let mut bytes = vec![128];
@@ -162,6 +176,19 @@ pub fn privkey_to_wif(priv_key: SecretKey) -> String {
     priv_key
 }
 
+/// Converts a WIF-encoded private key into a byte array
+/// ```
+/// use zeronet_cryptography::{SecretKey, wif_to_privkey};
+///
+/// const PRIVKEY: &str = "5KYZdUEo39z3FPrtuX2QbbwGnNP5zTd7yyr2SC1j299sBCnWjss";
+/// const PRIVKEY_BYTES: &[u8] = &[
+/// 227, 176, 196, 66, 152, 252, 28, 20, 154, 251, 244, 200, 153, 111, 185, 36, 39, 174, 65,
+/// 228, 100, 155, 147, 76, 164, 149, 153, 27, 120, 82, 184, 85,
+/// ];
+///
+/// let priv_key = wif_to_privkey(PRIVKEY).unwrap();
+/// assert_eq!(PRIVKEY_BYTES, priv_key);
+/// ```
 pub fn wif_to_privkey(wif_privkey: &str) -> Result<Vec<u8>, Error> {
     let priv_key = from_check(wif_privkey);
 
