@@ -217,6 +217,23 @@ pub fn create() -> (SecretKey, String) {
     (priv_key, address)
 }
 
+/// Derives a child private key from a given seed and child index using hierarchical deterministic (HD) key derivation
+/// ```
+/// use zeronet_cryptography::{SecretKey, hd_privkey};
+///
+/// const SEED: &str = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+/// const CHILD_INDEX: u32 = 45168996;
+/// const CHILD_PRIVKEY: &[u8] = &[
+/// 29, 131, 147, 25, 178, 182, 122, 121, 93, 19, 157, 0, 138, 212, 126,
+/// 103, 77, 161, 219, 149, 20, 171, 72, 118, 67, 23, 189, 83, 8, 0, 172, 63
+/// ];
+///
+/// let expected_key = SecretKey::from_slice(CHILD_PRIVKEY).unwrap();
+///
+/// let child_privkey = hd_privkey(SEED, CHILD_INDEX);
+///
+/// assert_eq!(expected_key, child_privkey);
+/// ```
 pub fn hd_privkey(seed: &str, child_idx: u32) -> SecretKey {
     let seed_bytes = hex_decode(&seed).unwrap();
 
