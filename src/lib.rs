@@ -110,16 +110,16 @@ pub fn sign<T: Into<Vec<u8>>>(data: T, privkey: &str) -> Result<String, Error> {
     Ok(s)
 }
 
-//create a public key from a private key
-//```
-//use zeronet_cryptography::privkey_to_pubkey;
-//const PRIVKEY: &str = "5KYZdUEo39z3FPrtuX2QbbwGnNP5zTd7yyr2SC1j299sBCnWjss";
-//const PUBKEY: &str = "1HZwkjkeaoZfTSaJxDw6aKkxp45agDiEzN";
-//
-//let pubkey = privkey_to_pubkey(PRIVKEY);
-//
-//assert_eq!(pubkey, PUBKEY);
-//```
+/// Create a public key from a private key
+/// ```
+/// use zeronet_cryptography::privkey_to_pubkey;
+/// const PRIVKEY: &str = "5KYZdUEo39z3FPrtuX2QbbwGnNP5zTd7yyr2SC1j299sBCnWjss";
+/// const PUBKEY: &str = "1HZwkjkeaoZfTSaJxDw6aKkxp45agDiEzN";
+///
+/// let pubkey = privkey_to_pubkey(PRIVKEY).unwrap();
+///
+/// assert_eq!(pubkey, PUBKEY);
+/// ```
 pub fn privkey_to_pubkey(privkey: &str) -> Result<String, Error> {
     let privkey_bytes = wif_to_privkey(privkey)?;
 
@@ -130,6 +130,19 @@ pub fn privkey_to_pubkey(privkey: &str) -> Result<String, Error> {
     Ok(pubkey)
 }
 
+/// Converts a seed (hex-encoded) into a private key
+/// ```
+/// use zeronet_cryptography::{seed_to_privkey, SecretKey};
+/// const SEED: &str = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+/// const PRIVKEY_BYTES: &[u8] = &[
+///     227, 176, 196, 66, 152, 252, 28, 20, 154, 251, 244, 200, 153, 111, 185, 36, 39, 174, 65,
+///    228, 100, 155, 147, 76, 164, 149, 153, 27, 120, 82, 184, 85,
+/// ];
+/// let expected_privkey = SecretKey::from_slice(PRIVKEY_BYTES).unwrap();
+/// let privkey = seed_to_privkey(SEED).unwrap();
+///
+/// assert_eq!(privkey, expected_privkey);
+/// ```
 pub fn seed_to_privkey(seed: &str) -> Result<SecretKey, Error> {
     // TODO: needs error handling
     let privkey_bytes = hex_decode(seed).unwrap();
