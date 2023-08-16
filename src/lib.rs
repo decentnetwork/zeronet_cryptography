@@ -38,6 +38,18 @@ fn serialize_address(public_key: secp256k1::PublicKey) -> String {
 
 static MSG_SIGN_PREFIX: &[u8] = b"\x18Bitcoin Signed Message:\n";
 
+/// Calculates the hash of a Bitcoin signed message
+/// ```
+/// use zeronet_cryptography::msg_hash;
+///
+/// const MESSAGE: &str = "Testmessage";
+/// const MSG_HASH: &[u8] = &[
+///     250, 76, 36, 63, 188, 246, 57, 82, 210, 190, 131, 30, 80, 21, 194, 116, 202, 29, 102, 133,
+///     20, 205, 34, 11, 215, 177, 255, 148, 166, 130, 107, 161,
+/// ]; // fa4c243fbcf63952d2be831e5015c274ca1d668514cd220bd7b1ff94a6826ba1
+///
+/// let result = msg_hash(MESSAGE.as_bytes());
+/// assert_eq!(result, MSG_HASH);
 pub fn msg_hash(msg: &[u8]) -> Vec<u8> {
     let bytes;
     bytes = serialize(&VarInt(msg.len() as u64));
@@ -110,16 +122,16 @@ pub fn sign<T: Into<Vec<u8>>>(data: T, privkey: &str) -> Result<String, Error> {
     Ok(s)
 }
 
-//create a public key from a private key
-//```
-//use zeronet_cryptography::privkey_to_pubkey;
-//const PRIVKEY: &str = "5KYZdUEo39z3FPrtuX2QbbwGnNP5zTd7yyr2SC1j299sBCnWjss";
-//const PUBKEY: &str = "1HZwkjkeaoZfTSaJxDw6aKkxp45agDiEzN";
-//
-//let pubkey = privkey_to_pubkey(PRIVKEY);
-//
-//assert_eq!(pubkey, PUBKEY);
-//```
+/// Create a public key from a private key
+/// ```
+/// use zeronet_cryptography::privkey_to_pubkey;
+/// const PRIVKEY: &str = "5KYZdUEo39z3FPrtuX2QbbwGnNP5zTd7yyr2SC1j299sBCnWjss";
+/// const PUBKEY: &str = "1HZwkjkeaoZfTSaJxDw6aKkxp45agDiEzN";
+///
+/// let pubkey = privkey_to_pubkey(PRIVKEY).unwrap();
+///
+/// assert_eq!(pubkey, PUBKEY);
+/// ```
 pub fn privkey_to_pubkey(privkey: &str) -> Result<String, Error> {
     let privkey_bytes = wif_to_privkey(privkey)?;
 
@@ -130,6 +142,19 @@ pub fn privkey_to_pubkey(privkey: &str) -> Result<String, Error> {
     Ok(pubkey)
 }
 
+/// Converts a seed (hex-encoded) into a private key
+/// ```
+/// use zeronet_cryptography::{seed_to_privkey, SecretKey};
+/// const SEED: &str = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+/// const PRIVKEY_BYTES: &[u8] = &[
+///     227, 176, 196, 66, 152, 252, 28, 20, 154, 251, 244, 200, 153, 111, 185, 36, 39, 174, 65,
+///    228, 100, 155, 147, 76, 164, 149, 153, 27, 120, 82, 184, 85,
+/// ];
+/// let expected_privkey = SecretKey::from_slice(PRIVKEY_BYTES).unwrap();
+/// let privkey = seed_to_privkey(SEED).unwrap();
+///
+/// assert_eq!(privkey, expected_privkey);
+/// ```
 pub fn seed_to_privkey(seed: &str) -> Result<SecretKey, Error> {
     // TODO: needs error handling
     let privkey_bytes = hex_decode(seed).unwrap();
@@ -139,6 +164,20 @@ pub fn seed_to_privkey(seed: &str) -> Result<SecretKey, Error> {
     Ok(privkey)
 }
 
+/// Converts a private key into a Wallet Import Format (WIF) string
+/// ```
+/// use zeronet_cryptography::{SecretKey, privkey_to_wif};
+///
+/// const PRIVKEY: &str = "5KYZdUEo39z3FPrtuX2QbbwGnNP5zTd7yyr2SC1j299sBCnWjss";
+/// const PRIVKEY_BYTES: &[u8] = &[
+/// 227, 176, 196, 66, 152, 252, 28, 20, 154, 251, 244, 200, 153, 111, 185, 36, 39, 174, 65,
+/// 228, 100, 155, 147, 76, 164, 149, 153, 27, 120, 82, 184, 85,
+/// ];
+///
+/// let priv_key = SecretKey::from_slice(PRIVKEY_BYTES).unwrap();
+/// let wif_privkey = privkey_to_wif(priv_key);
+/// assert_eq!(PRIVKEY, wif_privkey);
+/// ```
 pub fn privkey_to_wif(priv_key: SecretKey) -> String {
     let slice: &[u8] = &priv_key[..];
     let mut bytes = vec![128];
@@ -149,6 +188,19 @@ pub fn privkey_to_wif(priv_key: SecretKey) -> String {
     priv_key
 }
 
+/// Converts a WIF-encoded private key into a byte array
+/// ```
+/// use zeronet_cryptography::{SecretKey, wif_to_privkey};
+///
+/// const PRIVKEY: &str = "5KYZdUEo39z3FPrtuX2QbbwGnNP5zTd7yyr2SC1j299sBCnWjss";
+/// const PRIVKEY_BYTES: &[u8] = &[
+/// 227, 176, 196, 66, 152, 252, 28, 20, 154, 251, 244, 200, 153, 111, 185, 36, 39, 174, 65,
+/// 228, 100, 155, 147, 76, 164, 149, 153, 27, 120, 82, 184, 85,
+/// ];
+///
+/// let priv_key = wif_to_privkey(PRIVKEY).unwrap();
+/// assert_eq!(PRIVKEY_BYTES, priv_key);
+/// ```
 pub fn wif_to_privkey(wif_privkey: &str) -> Result<Vec<u8>, Error> {
     let priv_key = from_check(wif_privkey);
 
@@ -177,6 +229,23 @@ pub fn create() -> (SecretKey, String) {
     (priv_key, address)
 }
 
+/// Derives a child private key from a given seed and child index using hierarchical deterministic (HD) key derivation
+/// ```
+/// use zeronet_cryptography::{SecretKey, hd_privkey};
+///
+/// const SEED: &str = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+/// const CHILD_INDEX: u32 = 45168996;
+/// const CHILD_PRIVKEY: &[u8] = &[
+/// 29, 131, 147, 25, 178, 182, 122, 121, 93, 19, 157, 0, 138, 212, 126,
+/// 103, 77, 161, 219, 149, 20, 171, 72, 118, 67, 23, 189, 83, 8, 0, 172, 63
+/// ];
+///
+/// let expected_key = SecretKey::from_slice(CHILD_PRIVKEY).unwrap();
+///
+/// let child_privkey = hd_privkey(SEED, CHILD_INDEX);
+///
+/// assert_eq!(expected_key, child_privkey);
+/// ```
 pub fn hd_privkey(seed: &str, child_idx: u32) -> SecretKey {
     let seed_bytes = hex_decode(&seed).unwrap();
 
